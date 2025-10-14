@@ -9,6 +9,6 @@ variable "customer_app_client_name" {
   default     = "customer-client"
 }
 
-variable "next_lambda" {
-  type        = string
-}
+# variable "next_lambda" {
+#   type        = string
+# }
