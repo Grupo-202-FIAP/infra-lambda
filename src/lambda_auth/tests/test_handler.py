@@ -12,4 +12,5 @@ def test_handler_invalid_type():
     event = {"body": json.dumps({"type": "invalid"})}
     resp = handler(event, None)
     assert resp["statusCode"] == 400
-    assert "não suportado" in resp["body"]
+    body = json.loads(resp["body"])
+    assert "não suportado" in body["message"]

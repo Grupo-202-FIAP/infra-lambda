@@ -1,8 +1,10 @@
 import pytest
-from unittest.mock import patch
-from strategies.customer_auth import CustomerAuthStrategy
 import jwt
 import os
+import json
+from unittest.mock import patch
+from strategies.customer_auth import CustomerAuthStrategy
+
 
 @pytest.fixture
 def strategy():
