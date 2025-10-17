@@ -8,7 +8,3 @@ variable "internal_app_client_name" {
   type        = string
   default     = "internal-client"
 }
-
-# variable "next_lambda" {
-#   type        = string
-# }

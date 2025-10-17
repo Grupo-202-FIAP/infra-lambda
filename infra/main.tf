@@ -1,13 +1,11 @@
 module "cognito_user_pool_customer" {
   source       = "./modules/cognito_user_pool_customer"
   project_name = var.project_name
-  # next_lambda  = module.lambda_sync_customer.lambda_sync_customer_arn
 }
 
 module "cognito_user_pool_internal" {
   source       = "./modules/cognito_user_pool_internal"
   project_name = var.project_name
-  # next_lambda  = module.lambda_sync_internal.lambda_sync_internal_arn
 }
 
 module "lambda_role" {
@@ -50,6 +48,74 @@ resource "aws_iam_role_policy_attachment" "attach" {
   policy_arn = module.lambda_policy.policy_arn
 }
 
+module "lambda_registration_role" {
+  source    = "./modules/iam/roles"
+  role_name = "LambdaRegistrationRole"
+}
+
+module "lambda_registration_policy" {
+  source      = "./modules/iam/policies"
+  policy_name = "LambdaRegistrationPolicy"
+  description = "Permissões para Lambda de Registro de Usuários"
+  policy_document = {
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "cognito-idp:AdminCreateUser",
+          "cognito-idp:AdminSetUserPassword",
+          "cognito-idp:AdminAddUserToGroup",
+          "cognito-idp:ListUsers",
+          "cognito-idp:AdminUpdateUserAttributes",
+          "cognito-idp:AdminGetUser"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter",
+          "ssm:GetParameters",
+          "ssm:GetParametersByPath"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateNetworkInterface",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DeleteNetworkInterface"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = "*"
+      }
+    ]
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "attach_lambda_registration" {
+  role       = module.lambda_registration_role.role_name
+  policy_arn = module.lambda_registration_policy.policy_arn
+}
+
+
 resource "aws_ecr_repository" "lambda_auth_repo" {
   name                 = "lambda-authorizer-auth-repo"
   image_tag_mutability = "MUTABLE"
@@ -59,35 +125,20 @@ resource "aws_ecr_repository" "lambda_auth_repo" {
   }
 }
 
-locals {
-  lambda_auth_image_uri = "${aws_ecr_repository.lambda_auth_repo.repository_url}:${var.lambda_auth_image_tag}"
-}
+resource "aws_ecr_repository" "lambda_registration_repo" {
+  name                 = "lambda-registration-repo"
+  image_tag_mutability = "MUTABLE"
 
-
-# --- Lambda Authorizer Customer ---
-module "lambda_authorizer_customer" {
-  source        = "./modules/lambda_auth"
-  function_name = var.authorizer_customer_name
-  account_id    = var.account_id
-  role_arn      = module.lambda_role.role_arn
-  package_type  = var.package_type
-  timeout       = var.timeout
-  memory_size   = var.memory_size
-  image_uri     = local.lambda_auth_image_uri
-
-  environment_variables = {
-    USER_POOLS = "customer:${module.cognito_user_pool_customer.user_pool_id}"
-    REGION     = var.aws_region
-    JWT_SECRET = "3"
+  image_scanning_configuration {
+    scan_on_push = true
   }
-
-  depends_on = [aws_ecr_repository.lambda_auth_repo]
 }
 
-# --- Lambda Authorizer Internal ---
-module "lambda_authorizer_internal" {
+
+# --- Lambda Authorizer  ---
+module "lambda_authorizer" {
   source        = "./modules/lambda_auth"
-  function_name = var.authorizer_internal_name
+  function_name = var.authorizer_name
   account_id    = var.account_id
   role_arn      = module.lambda_role.role_arn
   package_type  = var.package_type
@@ -95,129 +146,81 @@ module "lambda_authorizer_internal" {
   memory_size   = var.memory_size
   image_uri     = local.lambda_auth_image_uri
 
-
   environment_variables = {
-    USER_POOLS             = "internal:${module.cognito_user_pool_internal.user_pool_id}"
-    REGION                 = var.aws_region
+    CUSTOMER_USER_POOL_ID  = module.cognito_user_pool_customer.user_pool_id
+    INTERNAL_USER_POOL_ID  = module.cognito_user_pool_internal.user_pool_id
     INTERNAL_APP_CLIENT_ID = module.cognito_user_pool_internal.app_client_id
+    REGION                 = var.aws_region
+    JWT_SECRET             = "3"
   }
 
   depends_on = [aws_ecr_repository.lambda_auth_repo]
-
 }
 
 
+module "lambda_registration" {
+  source        = "./modules/lambda_registration"
+  function_name = var.lambda_registration_name
+  role_arn      = module.lambda_registration_role.role_arn
+  role_name     = module.lambda_registration_role.role_name
+  image_uri     = local.lambda_registration_image_uri
+  package_type  = var.package_type
+  timeout       = var.timeout
+  memory_size   = var.memory_size
+
+  environment_variables = {
+    CUSTOMER_USER_POOL_ID  = module.cognito_user_pool_customer.user_pool_id
+    INTERNAL_USER_POOL_ID  = module.cognito_user_pool_internal.user_pool_id
+    INTERNAL_APP_CLIENT_ID = module.cognito_user_pool_internal.app_client_id
+    DB_HOST                = var.db_name
+    DB_NAME                = data.terraform_remote_state.network.outputs.db_host_name
+    DB_USER                = data.aws_ssm_parameter.db_user.value
+    DB_PASSWORD            = data.aws_ssm_parameter.db_password.value
+    REGION                 = var.aws_region
+  }
+
+  subnet_ids         = data.terraform_remote_state.network.outputs.private_subnet_ids
+  security_group_ids = [data.terraform_remote_state.network.outputs.security_group_postgres_id]
+
+  depends_on = [aws_ecr_repository.lambda_registration_repo]
+}
 
 
+resource "aws_lambda_permission" "allow_cognito_invoke_internal" {
+  statement_id  = "AllowExecutionFromCognito"
+  action        = "lambda:InvokeFunction"
+  function_name = var.lambda_registration_name
+  principal     = "cognito-idp.amazonaws.com"
+  source_arn    = module.cognito_user_pool_internal.cognito_internal_arn
+}
 
+resource "aws_lambda_permission" "allow_cognito_invoke_customer" {
+  statement_id  = "AllowExecutionFromCognito"
+  action        = "lambda:InvokeFunction"
+  function_name = var.lambda_registration_name
+  principal     = "cognito-idp.amazonaws.com"
+  source_arn    = module.cognito_user_pool_customer.cognito_customer_arn
+}
 
-# # --- Lambda Authorizer Customer ---
-# module "lambda_authorizer_customer" {
-#   source                          = "./modules/lambda_authorizer_customer"
-#   authorizer_customer_name        = var.authorizer_customer_name
-#   authorizer_customer_handler     = var.authorizer_customer_handler
-#   authorizer_customer_output_path = var.authorizer_customer_output_path
-#   lambda_runtime                  = var.lambda_runtime
-#   lambda_archive_type             = var.lambda_archive_type
-#   region                          = var.aws_region
-#   account_id                      = var.account_id
-#   user_pools = {
-#     customer = module.cognito_user_pool_customer.user_pool_id
-#   }
-# }
+resource "null_resource" "cognito_customer_trigger" {
+  provisioner "local-exec" {
+    command = "aws cognito-idp update-user-pool --user-pool-id ${module.cognito_user_pool_customer.user_pool_id} --lambda-config PreSignUp=${module.lambda_registration.lambda_registration_arn} --region us-east-1"
+  }
 
-# # --- Lambda Authorizer Internal ---
-# module "lambda_authorizer_internal" {
-#   source                          = "./modules/lambda_authorizer_internal"
-#   authorizer_internal_name        = var.authorizer_internal_name
-#   authorizer_internal_handler     = var.authorizer_internal_handler
-#   authorizer_internal_output_path = var.authorizer_internal_output_path
-#   lambda_runtime                  = var.lambda_runtime
-#   lambda_archive_type             = var.lambda_archive_type
-#   region                          = var.aws_region
-#   account_id                      = var.account_id
-#   user_pools = {
-#     internal = module.cognito_user_pool_internal.user_pool_id
-#   }
+  depends_on = [
+    module.lambda_registration,
+    module.cognito_user_pool_customer
+  ]
+}
 
-#   internal_app_client_id = module.cognito_user_pool_internal.app_client_id
-# }
+resource "null_resource" "cognito_internal_trigger" {
+  provisioner "local-exec" {
+    command = "aws cognito-idp update-user-pool --user-pool-id ${module.cognito_user_pool_internal.user_pool_id} --lambda-config PreSignUp=${module.lambda_registration.lambda_registration_arn} --region us-east-1"
+  }
 
-# # --- Lambda Registration Customer ---
-# module "lambda_registration_customer" {
-#   source                            = "./modules/lambda_registration_customer"
-#   registration_customer_handler     = var.registration_customer_handler
-#   registration_customer_name        = var.registration_customer_name
-#   registration_customer_output_path = var.registration_customer_output_path
-#   lambda_runtime                    = var.lambda_runtime
-#   lambda_archive_type               = var.lambda_archive_type
-#   region                            = var.aws_region
-#   lambda_source_dir                 = "${path.module}/../src/lambda_registration_customer"
-#   account_id                        = var.account_id
-#   user_pools = {
-#     customer = module.cognito_user_pool_customer.user_pool_id
-#   }
-# }
+  depends_on = [
+    module.lambda_registration,
+    module.cognito_user_pool_internal
+  ]
+}
 
-# # --- Lambda Registration Internal ---
-# module "lambda_registration_internal" {
-#   source                            = "./modules/lambda_registration_internal"
-#   registration_internal_handler     = var.registration_internal_handler
-#   registration_internal_name        = var.registration_internal_name
-#   registration_internal_output_path = var.registration_internal_output_path
-#   lambda_runtime                    = var.lambda_runtime
-#   lambda_archive_type               = var.lambda_archive_type
-#   region                            = var.aws_region
-#   lambda_source_dir                 = "${path.module}/../src/lambda_registration_internal"
-#   account_id                        = var.account_id
-#   user_pools = {
-#     internal = module.cognito_user_pool_internal.user_pool_id
-#   }
-#   internal_app_client_id = module.cognito_user_pool_internal.app_client_id
-# }
-
-# # --- Lambda Sync Internal ---
-# module "lambda_sync_internal" {
-#   source                    = "./modules/lambda_sync_internal"
-#   sync_internal_handler     = var.sync_internal_handler
-#   sync_internal_name        = var.sync_internal_name
-#   sync_internal_output_path = var.sync_internal_output_path
-#   lambda_runtime            = var.lambda_runtime
-#   lambda_archive_type       = var.lambda_archive_type
-#   region                    = var.aws_region
-#   lambda_source_dir         = "${path.module}/../src/lambda_sync_internal"
-#   account_id                = var.account_id
-#   subnet_ids                = data.terraform_remote_state.network.outputs.private_subnet_ids
-#   security_group_ids        = [data.terraform_remote_state.network.outputs.security_group_postgres_id]
-# }
-
-# resource "aws_lambda_permission" "allow_cognito_invoke_internal" {
-#   statement_id  = "AllowExecutionFromCognito"
-#   action        = "lambda:InvokeFunction"
-#   function_name = module.lambda_sync_internal.lambda_sync_internal_name
-#   principal     = "cognito-idp.amazonaws.com"
-#   source_arn    = module.cognito_user_pool_internal.cognito_internal_arn
-# }
-
-# # --- Lambda Sync Customer ---
-# module "lambda_sync_customer" {
-#   source                    = "./modules/lambda_sync_customer"
-#   sync_customer_handler     = var.sync_customer_handler
-#   sync_customer_name        = var.sync_customer_name
-#   sync_customer_output_path = var.sync_customer_output_path
-#   lambda_runtime            = var.lambda_runtime
-#   lambda_archive_type       = var.lambda_archive_type
-#   region                    = var.aws_region
-#   lambda_source_dir         = "${path.module}/../src/lambda_sync_customer"
-#   account_id                = var.account_id
-#   subnet_ids                = data.terraform_remote_state.network.outputs.private_subnet_ids
-#   security_group_ids        = [data.terraform_remote_state.network.outputs.security_group_postgres_id]
-# }
-
-# resource "aws_lambda_permission" "allow_cognito_invoke_customer" {
-#   statement_id  = "AllowExecutionFromCognito"
-#   action        = "lambda:InvokeFunction"
-#   function_name = module.lambda_sync_customer.lambda_sync_customer_name
-#   principal     = "cognito-idp.amazonaws.com"
-#   source_arn    = module.cognito_user_pool_customer.cognito_customer_arn
-# }
