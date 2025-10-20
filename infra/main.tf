@@ -187,7 +187,7 @@ module "lambda_registration" {
 
 
 resource "aws_lambda_permission" "allow_cognito_invoke_internal" {
-  statement_id  = "AllowExecutionFromCognito"
+  statement_id  = "AllowExecutionFromCognitoInternal"
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_registration_name
   principal     = "cognito-idp.amazonaws.com"
@@ -195,7 +195,7 @@ resource "aws_lambda_permission" "allow_cognito_invoke_internal" {
 }
 
 resource "aws_lambda_permission" "allow_cognito_invoke_customer" {
-  statement_id  = "AllowExecutionFromCognito"
+  statement_id  = "AllowExecutionFromCognitoCustomer"
   action        = "lambda:InvokeFunction"
   function_name = var.lambda_registration_name
   principal     = "cognito-idp.amazonaws.com"
@@ -204,23 +204,13 @@ resource "aws_lambda_permission" "allow_cognito_invoke_customer" {
 
 resource "null_resource" "cognito_customer_trigger" {
   provisioner "local-exec" {
-    command = "aws cognito-idp update-user-pool --user-pool-id ${module.cognito_user_pool_customer.user_pool_id} --lambda-config PreSignUp=${module.lambda_registration.lambda_registration_arn} --region us-east-1"
+    command = "aws cognito-idp update-user-pool --user-pool-id ${module.cognito_user_pool_customer.user_pool_id} --lambda-config PreSignUp=${module.lambda_registration.arn} --region us-east-1"
   }
-
-  depends_on = [
-    module.lambda_registration,
-    module.cognito_user_pool_customer
-  ]
 }
 
 resource "null_resource" "cognito_internal_trigger" {
   provisioner "local-exec" {
-    command = "aws cognito-idp update-user-pool --user-pool-id ${module.cognito_user_pool_internal.user_pool_id} --lambda-config PreSignUp=${module.lambda_registration.lambda_registration_arn} --region us-east-1"
+    command = "aws cognito-idp update-user-pool --user-pool-id ${module.cognito_user_pool_internal.user_pool_id} --lambda-config PreSignUp=${module.lambda_registration.arn} --region us-east-1"
   }
-
-  depends_on = [
-    module.lambda_registration,
-    module.cognito_user_pool_internal
-  ]
 }
 

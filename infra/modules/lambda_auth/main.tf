@@ -12,7 +12,3 @@ resource "aws_lambda_function" "lambda_authorizer" {
     variables = var.environment_variables
   }
 }
-
-output "lambda_arn" {
-  value = aws_lambda_function.lambda_authorizer.arn
-}

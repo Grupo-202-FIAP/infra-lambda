@@ -9,4 +9,12 @@ terraform {
       version = "~> 5.0"
     }
   }
+
+  backend "s3" {
+    bucket  = "terraform-state-bucket-nextime"
+    key     = "lambda/infra.tfstate"
+    region  = "us-east-1"
+    encrypt = true
+  }
+
 }
