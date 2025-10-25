@@ -10,11 +10,11 @@ terraform {
     }
   }
 
-  backend "s3" {
-    bucket  = "terraform-state-bucket-nextime"
-    key     = "lambda/infra.tfstate"
-    region  = "us-east-1"
-    encrypt = true
-  }
+  # backend "s3" {
+  #   bucket  = "terraform-state-bucket-nextime"
+  #   key     = "lambda/infra.tfstate"
+  #   region  = "us-east-1"
+  #   encrypt = true
+  # }
 
 }

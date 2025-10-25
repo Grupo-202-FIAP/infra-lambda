@@ -172,8 +172,8 @@ module "lambda_registration" {
     CUSTOMER_USER_POOL_ID  = module.cognito_user_pool_customer.user_pool_id
     INTERNAL_USER_POOL_ID  = module.cognito_user_pool_internal.user_pool_id
     INTERNAL_APP_CLIENT_ID = module.cognito_user_pool_internal.app_client_id
-    DB_HOST                = var.db_name
-    DB_NAME                = data.terraform_remote_state.network.outputs.db_host_name
+    DB_HOST                = data.terraform_remote_state.network.outputs.db_host_name
+    DB_NAME                = var.db_name
     DB_USER                = data.aws_ssm_parameter.db_user.value
     DB_PASSWORD            = data.aws_ssm_parameter.db_password.value
     REGION                 = var.aws_region
