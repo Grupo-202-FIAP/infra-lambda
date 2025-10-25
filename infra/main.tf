@@ -157,7 +157,7 @@ module "lambda_authorizer" {
   depends_on = [aws_ecr_repository.lambda_auth_repo]
 }
 
-
+# --- Lambda Registration ---
 module "lambda_registration" {
   source        = "./modules/lambda_registration"
   function_name = var.lambda_registration_name
@@ -185,32 +185,42 @@ module "lambda_registration" {
   depends_on = [aws_ecr_repository.lambda_registration_repo]
 }
 
-
+# --- Lambda Permissions para Cognito ---
 resource "aws_lambda_permission" "allow_cognito_invoke_internal" {
   statement_id  = "AllowExecutionFromCognitoInternal"
   action        = "lambda:InvokeFunction"
-  function_name = var.lambda_registration_name
+  function_name = module.lambda_registration.arn
   principal     = "cognito-idp.amazonaws.com"
   source_arn    = module.cognito_user_pool_internal.cognito_internal_arn
+
+  depends_on = [module.lambda_registration]
 }
 
 resource "aws_lambda_permission" "allow_cognito_invoke_customer" {
   statement_id  = "AllowExecutionFromCognitoCustomer"
   action        = "lambda:InvokeFunction"
-  function_name = var.lambda_registration_name
+  function_name = module.lambda_registration.arn
   principal     = "cognito-idp.amazonaws.com"
   source_arn    = module.cognito_user_pool_customer.cognito_customer_arn
+
+  depends_on = [module.lambda_registration]
 }
 
+# --- Atualização dos triggers do Cognito ---
 resource "null_resource" "cognito_customer_trigger" {
   provisioner "local-exec" {
     command = "aws cognito-idp update-user-pool --user-pool-id ${module.cognito_user_pool_customer.user_pool_id} --lambda-config PreSignUp=${module.lambda_registration.arn} --region us-east-1"
   }
+
+  depends_on = [module.lambda_registration]
 }
 
 resource "null_resource" "cognito_internal_trigger" {
   provisioner "local-exec" {
     command = "aws cognito-idp update-user-pool --user-pool-id ${module.cognito_user_pool_internal.user_pool_id} --lambda-config PreSignUp=${module.lambda_registration.arn} --region us-east-1"
   }
+
+  depends_on = [module.lambda_registration]
 }
+
 

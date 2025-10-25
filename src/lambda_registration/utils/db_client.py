@@ -1,46 +1,63 @@
 import os
 import boto3
 import psycopg2
+import logging
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
 
 class DBClient:
     def __init__(self):
-        # Parâmetros do SSM Parameter Store (passados via infraestrutura)
+        # Parâmetros do SSM / Ambiente
         db_host_param = os.getenv("DB_HOST")
         db_user_param = os.getenv("DB_USER")
         db_password_param = os.getenv("DB_PASSWORD")
-        db_name = os.getenv("DB_NAME")
-        
-        # Validar se as variáveis de ambiente foram definidas
-        if not all([db_host_param, db_user_param, db_password_param, db_name]):
-            missing_vars = []
-            if not db_host_param: missing_vars.append("DB_HOST")
-            if not db_user_param: missing_vars.append("DB_USER")
-            if not db_password_param: missing_vars.append("DB_PASSWORD")
-            if not db_name: missing_vars.append("DB_NAME")
-            raise ValueError(f"Variáveis de ambiente não configuradas: {', '.join(missing_vars)}")
-        
-        # Cliente SSM
-        ssm = boto3.client("ssm", region_name="us-east-1")
-        
-        try:
-            # Buscar parâmetros do SSM
-            user_response = ssm.get_parameter(Name=db_user_param)
-            password_response = ssm.get_parameter(Name=db_password_param, WithDecryption=True)
-            
-            db_user = user_response["Parameter"]["Value"]
-            db_password = password_response["Parameter"]["Value"]
-            
-        except Exception as e:
-            raise ValueError(f"Erro ao buscar parâmetros do SSM: {str(e)}")
+        db_name_param = os.getenv("DB_NAME")
 
-        self._conn = psycopg2.connect(
-            host=db_host_param,
-            user=db_user,
-            password=db_password,
-            dbname=db_name
-        )
+        # Valida variáveis de ambiente
+        if not all([db_host_param, db_user_param, db_password_param, db_name_param]):
+            missing_vars = []
+            if not db_host_param:
+                missing_vars.append("DB_HOST")
+            if not db_user_param:
+                missing_vars.append("DB_USER")
+            if not db_password_param:
+                missing_vars.append("DB_PASSWORD")
+            if not db_name_param:
+                missing_vars.append("DB_NAME")
+            raise ValueError(f"Variáveis de ambiente não configuradas: {', '.join(missing_vars)}")
+
+        # Extrai host e porta (se vierem juntos)
+        if ":" in db_host_param:
+            db_host, db_port = db_host_param.split(":")
+            db_port = int(db_port)
+        else:
+            db_host = db_host_param
+            db_port = 5432  # padrão PostgreSQL
+
+        logger.info(f"[DBClient] Conectando ao banco: host={db_host}, port={db_port}, dbname={db_name_param}")
+
+        # Conexão PostgreSQL
+        try:
+            self._conn = psycopg2.connect(
+                host=db_host,
+                port=db_port,
+                user=db_user_param,
+                password=db_password_param,
+                dbname=db_name_param
+            )
+            logger.info("[DBClient] Conexão PostgreSQL estabelecida com sucesso.")
+        except Exception as e:
+            logger.exception(f"[DBClient] Erro ao conectar no PostgreSQL: {str(e)}")
+            raise ValueError(f"Erro ao conectar no PostgreSQL: {str(e)}")
 
     def execute(self, query, params=None):
-        with self._conn.cursor() as cursor:
-            cursor.execute(query, params)
-        self._conn.commit()
+        try:
+            with self._conn.cursor() as cursor:
+                cursor.execute(query, params)
+            self._conn.commit()
+            logger.info(f"[DBClient] Query executada com sucesso: {query}")
+        except Exception as e:
+            logger.exception(f"[DBClient] Erro ao executar query: {str(e)}")
+            raise

@@ -6,7 +6,6 @@ from lambda_registration.strategies.customer_sync import CustomerSyncStrategy
 from lambda_registration.strategies.employee_sync import EmployeeSyncStrategy
 from lambda_registration.utils.responses import response
 
-# --- Configuração de logging ---
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -14,7 +13,17 @@ def handler(event, context):
     logger.info("==== Iniciando execução da Lambda de registro ====")
     logger.info(f"Evento recebido: {json.dumps(event)}")
 
-    # --- Tenta fazer parse do corpo JSON ---
+    # --- Caso 1: Evento veio do Cognito Trigger (PreSignUp) ---
+    if "triggerSource" in event:
+        logger.info("Detectado evento Cognito Trigger. Retornando evento original.")
+        
+        # (Opcional) você pode confirmar o usuário automaticamente:
+        event["response"]["autoConfirmUser"] = True
+        event["response"]["autoVerifyEmail"] = True
+        
+        return event
+
+    # --- Caso 2: Evento veio via API Gateway ---
     try:
         body = json.loads(event.get("body", "{}"))
         logger.info(f"Body decodificado: {body}")
@@ -22,7 +31,6 @@ def handler(event, context):
         logger.error(f"Erro ao decodificar body JSON: {e}")
         return response(400, {"message": "Corpo inválido: precisa ser JSON"})
 
-    # --- Validação do tipo de usuário ---
     user_type = body.get("type")
     if not user_type:
         logger.warning("Campo 'type' ausente no body.")
@@ -30,7 +38,6 @@ def handler(event, context):
 
     logger.info(f"Tipo de usuário recebido: {user_type}")
 
-    # --- Mapeia as strategies correspondentes ---
     registration_map = {
         "customer": CustomerRegistrationStrategy,
         "employee": EmployeeRegistrationStrategy,
@@ -46,7 +53,6 @@ def handler(event, context):
         logger.error(f"Tipo de usuário inválido: {user_type}")
         return response(400, {"message": f"Tipo '{user_type}' inválido"})
 
-    # --- Execução da etapa de registro ---
     try:
         logger.info(f"Iniciando registro para tipo '{user_type}' com strategy '{reg_class.__name__}'")
         reg_strategy = reg_class()
@@ -56,12 +62,10 @@ def handler(event, context):
         logger.exception(f"Erro inesperado durante o registro: {e}")
         return response(500, {"message": f"Erro interno durante o registro: {str(e)}"})
 
-    # --- Se o registro falhou, interrompe o fluxo ---
     if reg_result.get("statusCode") != 201:
         logger.warning(f"Registro falhou: {reg_result}")
         return reg_result
 
-    # --- Execução da etapa de sincronização ---
     try:
         logger.info(f"Iniciando sync automático com strategy '{sync_class.__name__}'")
         sync_strategy = sync_class()
@@ -71,7 +75,6 @@ def handler(event, context):
         logger.exception(f"Erro inesperado durante o sync: {e}")
         return response(500, {"message": f"Erro interno durante o sync: {str(e)}"})
 
-    # --- Retorno final consolidado ---
     result = response(201, {
         "message": f"{user_type.capitalize()} cadastrado e sincronizado com sucesso",
         "registration": json.loads(reg_result["body"]),
