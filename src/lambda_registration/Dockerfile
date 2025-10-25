@@ -1,8 +1,12 @@
 FROM public.ecr.aws/lambda/python:3.12
 
-COPY requirements.txt ${LAMBDA_TASK_ROOT}/
-RUN pip install -r ${LAMBDA_TASK_ROOT}/requirements.txt --target ${LAMBDA_TASK_ROOT} --no-cache-dir
+WORKDIR ${LAMBDA_TASK_ROOT}
 
-COPY . ${LAMBDA_TASK_ROOT}/
+COPY requirements.txt ./
+RUN pip install -r requirements.txt --target . --no-cache-dir
 
-CMD ["handler.handler"]
+# 👇 Copia o diretório completo mantendo o nome 'lambda_registration'
+COPY . ./lambda_registration
+
+# Ajuste o CMD para apontar para o handler dentro do pacote
+CMD ["lambda_registration.handler.handler"]

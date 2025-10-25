@@ -1,19 +1,27 @@
 import json
+import logging
 from .base import BaseStrategy
 from ..utils.db_client import DBClient
 from ..utils.responses import response
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 
 class EmployeeSyncStrategy(BaseStrategy):
     def __init__(self):
         self.db = DBClient()
+        logger.info("[EmployeeSyncStrategy] Inicializado DBClient para sync de employees")
 
     def execute(self, data: dict) -> dict:
+        logger.info(f"[EmployeeSync] Dados recebidos para sync: {data}")
+
         user_id = data.get("userId")
         email = data.get("email")
         name = data.get("name")
 
         if not user_id or not email:
+            logger.warning("[EmployeeSync] userId ou email ausente no payload")
             return response(400, {"message": "userId e email são obrigatórios para sync"})
 
         try:
@@ -24,7 +32,11 @@ class EmployeeSyncStrategy(BaseStrategy):
                 SET nome = EXCLUDED.nome, email = EXCLUDED.email;
             """
             params = (user_id, name, email)
+            logger.info(f"[EmployeeSync] Executando SQL: {sql.strip()} com params={params}")
             self.db.execute(sql, params)
+            logger.info(f"[EmployeeSync] Employee sincronizado com sucesso: userId={user_id}")
             return response(200, {"message": "Employee sincronizado"})
+
         except Exception as e:
+            logger.exception(f"[EmployeeSync] Erro ao sincronizar employee userId={user_id}: {e}")
             return response(500, {"message": f"Erro ao sincronizar employee: {str(e)}"})
