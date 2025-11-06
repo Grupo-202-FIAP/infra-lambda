@@ -1,8 +1,8 @@
 import os
-from utils.responses import response
-from utils.json_parser import parse_json_body
-from strategies.internal_auth import InternalAuthStrategy
-from strategies.customer_auth import CustomerAuthStrategy
+from lambda_auth.utils.responses import response
+from lambda_auth.utils.json_parser import parse_json_body
+from lambda_auth.strategies.internal_auth import InternalAuthStrategy
+from lambda_auth.strategies.customer_auth import CustomerAuthStrategy
 
 class AuthFactory:
     STRATEGIES = {

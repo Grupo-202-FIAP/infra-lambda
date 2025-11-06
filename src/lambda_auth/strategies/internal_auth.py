@@ -1,12 +1,11 @@
 import os
 import boto3
 from botocore.exceptions import ClientError
-from utils.responses import response
+from ..utils.responses import response
 
 REGION = os.environ.get("REGION", "us-east-1")
 INTERNAL_APP_CLIENT_ID = os.environ.get("INTERNAL_APP_CLIENT_ID")
-USER_POOLS = os.environ.get("USER_POOLS", "internal:us-east-1_UNnANkTz9")
-POOL_MAP = dict(item.split(":") for item in USER_POOLS.split(",") if ":" in item)
+INTERNAL_USER_POOL = os.environ.get("INTERNAL_USER_POOL", "us-east-1_UNnANkTz9")
 
 cognito_client = boto3.client("cognito-idp", region_name=REGION)
 
@@ -19,13 +18,9 @@ class InternalAuthStrategy:
         if not email or not password:
             return response(400, {"message": "Obrigatório enviar email e senha"})
 
-        user_pool_id = POOL_MAP.get("internal")
-        if not user_pool_id:
-            return response(500, {"message": "User pool de internal não configurada"})
-
         try:
             resp = cognito_client.admin_initiate_auth(
-                UserPoolId=user_pool_id,
+                UserPoolId=INTERNAL_USER_POOL,
                 ClientId=INTERNAL_APP_CLIENT_ID,
                 AuthFlow="ADMIN_USER_PASSWORD_AUTH",
                 AuthParameters={"USERNAME": email, "PASSWORD": password}
@@ -39,7 +34,7 @@ class InternalAuthStrategy:
                         "session": resp.get("Session")
                     })
                 resp = cognito_client.admin_respond_to_auth_challenge(
-                    UserPoolId=user_pool_id,
+                    UserPoolId=INTERNAL_USER_POOL,
                     ClientId=INTERNAL_APP_CLIENT_ID,
                     ChallengeName="NEW_PASSWORD_REQUIRED",
                     ChallengeResponses={"USERNAME": email, "NEW_PASSWORD": new_password},
