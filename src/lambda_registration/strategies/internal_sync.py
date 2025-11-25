@@ -8,20 +8,20 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-class EmployeeSyncStrategy(BaseStrategy):
+class InternalSyncStrategy(BaseStrategy):
     def __init__(self):
         self.db = DBClient()
-        logger.info("[EmployeeSyncStrategy] Inicializado DBClient para sync de employees")
+        logger.info("[InternalSyncStrategy] Inicializado DBClient para sync de internos")
 
     def execute(self, data: dict) -> dict:
-        logger.info(f"[EmployeeSync] Dados recebidos para sync: {data}")
+        logger.info(f"[InternalSync] Dados recebidos para sync: {data}")
 
         user_id = data.get("userId")
         email = data.get("email")
         name = data.get("name")
 
         if not user_id or not email:
-            logger.warning("[EmployeeSync] userId ou email ausente no payload")
+            logger.warning("[InternalSync] userId ou email ausente no payload")
             return response(400, {"message": "userId e email são obrigatórios para sync"})
 
         try:
@@ -32,11 +32,12 @@ class EmployeeSyncStrategy(BaseStrategy):
                 SET nome = EXCLUDED.nome, email = EXCLUDED.email;
             """
             params = (user_id, name, email)
-            logger.info(f"[EmployeeSync] Executando SQL: {sql.strip()} com params={params}")
+            logger.info(f"[InternalSync] Executando SQL: {sql.strip()} com params={params}")
             self.db.execute(sql, params)
-            logger.info(f"[EmployeeSync] Employee sincronizado com sucesso: userId={user_id}")
-            return response(200, {"message": "Employee sincronizado"})
+            logger.info(f"[InternalSync] Interno sincronizado com sucesso: userId={user_id}")
+            return response(200, {"message": "Interno sincronizado"})
 
         except Exception as e:
-            logger.exception(f"[EmployeeSync] Erro ao sincronizar employee userId={user_id}: {e}")
-            return response(500, {"message": f"Erro ao sincronizar employee: {str(e)}"})
+            logger.exception(f"[InternalSync] Erro ao sincronizar interno userId={user_id}: {e}")
+            return response(500, {"message": f"Erro ao sincronizar interno: {str(e)}"})
+

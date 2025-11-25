@@ -52,7 +52,7 @@ variable "timeout" {
 # Lambda Registration/Sync
 # ==========================
 variable "lambda_registration_name" {
-  description = "Nome da função Lambda unificada responsável pelo registro e sincronização (Customer e Employee)."
+  description = "Nome da função Lambda unificada responsável pelo registro e sincronização (Customer e Internal)."
   type        = string
 }
 

@@ -77,7 +77,8 @@ module "lambda_registration_policy" {
           "cognito-idp:AdminAddUserToGroup",
           "cognito-idp:ListUsers",
           "cognito-idp:AdminUpdateUserAttributes",
-          "cognito-idp:AdminGetUser"
+          "cognito-idp:AdminGetUser",
+          "cognito-idp:AdminInitiateAuth"
         ]
         Resource = "*"
       },
@@ -117,7 +118,7 @@ resource "aws_iam_role_policy_attachment" "attach_lambda_registration" {
 
 
 resource "aws_ecr_repository" "lambda_auth_repo" {
-  name                 = "lambda-authorizer-auth-repo"
+  name                 = "lambda-authorizer-repo"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {

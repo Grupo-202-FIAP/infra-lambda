@@ -22,7 +22,6 @@ class CognitoClient:
             self._client = client
         else:
             self._client = boto3.client("cognito-idp", region_name=region)
-
     def list_users(self, user_pool_id: str, filter_str: str, limit: int = 60) -> Dict:
         """Lista usuários do user pool com filtro."""
         try:

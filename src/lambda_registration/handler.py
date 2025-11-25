@@ -1,9 +1,9 @@
 import json
 import logging
 from lambda_registration.strategies.customer_registration_strategy import CustomerRegistrationStrategy
-from lambda_registration.strategies.employee_registration_strategy import EmployeeRegistrationStrategy
+from lambda_registration.strategies.internal_registration_strategy import InternalRegistrationStrategy
 from lambda_registration.strategies.customer_sync import CustomerSyncStrategy
-from lambda_registration.strategies.employee_sync import EmployeeSyncStrategy
+from lambda_registration.strategies.internal_sync import InternalSyncStrategy
 from lambda_registration.utils.responses import response
 
 logger = logging.getLogger()
@@ -34,17 +34,17 @@ def handler(event, context):
     user_type = body.get("type")
     if not user_type:
         logger.warning("Campo 'type' ausente no body.")
-        return response(400, {"message": "Campo 'type' obrigatório (ex: 'customer' ou 'employee')"})
+        return response(400, {"message": "Campo 'type' obrigatório (ex: 'customer' ou 'internal')"})
 
     logger.info(f"Tipo de usuário recebido: {user_type}")
 
     registration_map = {
         "customer": CustomerRegistrationStrategy,
-        "employee": EmployeeRegistrationStrategy,
+        "internal": InternalRegistrationStrategy,
     }
     sync_map = {
         "customer": CustomerSyncStrategy,
-        "employee": EmployeeSyncStrategy,
+        "internal": InternalSyncStrategy,
     }
 
     reg_class = registration_map.get(user_type)

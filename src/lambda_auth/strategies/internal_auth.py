@@ -9,7 +9,7 @@ logger.setLevel(logging.INFO)
 
 REGION = os.environ.get("REGION", "us-east-1")
 INTERNAL_APP_CLIENT_ID = os.environ.get("INTERNAL_APP_CLIENT_ID")
-INTERNAL_USER_POOL = os.environ.get("INTERNAL_USER_POOL", "us-east-1_UNnANkTz9")
+INTERNAL_USER_POOL = os.environ.get("INTERNAL_USER_POOL_ID")
 
 cognito_client = boto3.client("cognito-idp", region_name=REGION)
 

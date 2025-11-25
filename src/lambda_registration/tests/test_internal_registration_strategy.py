@@ -4,9 +4,9 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 from lambda_registration.strategies.customer_sync import CustomerSyncStrategy
-from lambda_registration.strategies.employee_sync import EmployeeSyncStrategy
+from lambda_registration.strategies.internal_sync import InternalSyncStrategy
 from lambda_registration.utils.responses import response
-from lambda_registration.strategies.employee_registration_strategy import EmployeeRegistrationStrategy
+from lambda_registration.strategies.internal_registration_strategy import InternalRegistrationStrategy
 from lambda_registration.strategies.customer_registration_strategy import CustomerRegistrationStrategy
 
 class FakeCognitoClient:
@@ -36,8 +36,8 @@ def fake_cognito():
     return FakeCognitoClient()
 
 
-def test_employee_registration_success(fake_cognito):
-    strategy = EmployeeRegistrationStrategy(cognito=fake_cognito)
+def test_internal_registration_success(fake_cognito):
+    strategy = InternalRegistrationStrategy(cognito=fake_cognito)
     data = {"email": "user@test.com", "password": "Pass@123", "name": "João"}
 
     result = strategy.execute(data)
@@ -49,8 +49,8 @@ def test_employee_registration_success(fake_cognito):
     assert "username" in body
 
 
-def test_employee_registration_missing_fields(fake_cognito):
-    strategy = EmployeeRegistrationStrategy(cognito=fake_cognito)
+def test_internal_registration_missing_fields(fake_cognito):
+    strategy = InternalRegistrationStrategy(cognito=fake_cognito)
     result = strategy.execute({"email": "user@test.com"})
     body = json.loads(result["body"])
 
@@ -77,3 +77,4 @@ def test_customer_registration_missing_cpf(fake_cognito):
 
     assert result["statusCode"] == 400
     assert "Obrigatório enviar CPF" in body["message"]
+
