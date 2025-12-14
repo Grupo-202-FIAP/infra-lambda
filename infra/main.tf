@@ -106,6 +106,15 @@ module "lambda_registration_policy" {
           "secretsmanager:GetSecretValue"
         ]
         Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "sqs:SendMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:GetQueueUrl"
+        ]
+        Resource = "*"
       }
     ]
   }
@@ -178,6 +187,7 @@ module "lambda_registration" {
     DB_USER                = data.aws_ssm_parameter.db_user.value
     DB_PASSWORD            = data.aws_ssm_parameter.db_password.value
     REGION                 = var.aws_region
+    SQS_QUEUE_URL          = data.terraform_remote_state.network.outputs.sqs_queue_url
   }
 
   subnet_ids         = data.terraform_remote_state.network.outputs.private_subnet_ids
