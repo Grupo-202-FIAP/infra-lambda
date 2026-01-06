@@ -75,9 +75,13 @@ jobs:
         run: |
           terraform apply -target=aws_ecr_repository.lambda_auth_repo \
                           -target=aws_ecr_repository.lambda_registration_repo \
+                          -target=aws_ecr_repository.lambda_get_user_repo \
+                          -target=aws_ecr_repository.lambda_list_users_repo \
                           -auto-approve
           echo "LAMBDA_AUTH_ECR_URI=$(terraform output -raw ecr_lambda_auth_url)" >> $GITHUB_ENV
           echo "LAMBDA_REGISTRATION_ECR_URI=$(terraform output -raw ecr_lambda_registration_url)" >> $GITHUB_ENV
+          echo "LAMBDA_GET_USER_ECR_URI=$(terraform output -raw ecr_lambda_get_user_url)" >> $GITHUB_ENV
+          echo "LAMBDA_LIST_USERS_ECR_URI=$(terraform output -raw ecr_lambda_list_users_url)" >> $GITHUB_ENV
         working-directory: infra
 
       # ------------------------------
@@ -92,6 +96,10 @@ jobs:
           | docker login --username AWS --password-stdin ${{ env.LAMBDA_AUTH_ECR_URI }}
           aws ecr get-login-password --region ${{ env.AWS_REGION }} \
           | docker login --username AWS --password-stdin ${{ env.LAMBDA_REGISTRATION_ECR_URI }}
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} \
+          | docker login --username AWS --password-stdin ${{ env.LAMBDA_GET_USER_ECR_URI }}
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} \
+          | docker login --username AWS --password-stdin ${{ env.LAMBDA_LIST_USERS_ECR_URI }}
 
       - name: Build, Tag e Push Lambda Authorizer
         run: |
@@ -105,14 +113,24 @@ jobs:
           docker tag lambda-registration:latest ${{ env.LAMBDA_REGISTRATION_ECR_URI }}:latest
           docker push ${{ env.LAMBDA_REGISTRATION_ECR_URI }}:latest
 
+      - name: Build, Tag e Push Lambda Get User
+        run: |
+          docker build -t lambda-get-user src/lambda_get_user/
+          docker tag lambda-get-user:latest ${{ env.LAMBDA_GET_USER_ECR_URI }}:latest
+          docker push ${{ env.LAMBDA_GET_USER_ECR_URI }}:latest
+
+      - name: Build, Tag e Push Lambda List Users
+        run: |
+          docker build -t lambda-list-users src/lambda_list_users/
+          docker tag lambda-list-users:latest ${{ env.LAMBDA_LIST_USERS_ECR_URI }}:latest
+          docker push ${{ env.LAMBDA_LIST_USERS_ECR_URI }}:latest
+
       # ------------------------------
       # 7️⃣ Terraform – Deploy Lambdas
       # ------------------------------
       - name: Terraform Plan para Deploy
         run: |
-          terraform plan -out=tfplan \
-            -var "lambda_auth_image_uri=${LAMBDA_AUTH_ECR_URI}:latest" \
-            -var "lambda_registration_image_uri=${LAMBDA_REGISTRATION_ECR_URI}:latest"
+          terraform plan -out=tfplan
         working-directory: infra
 
       - name: Terraform Apply (Deploy Lambdas)
