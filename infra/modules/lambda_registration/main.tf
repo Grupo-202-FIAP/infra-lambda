@@ -4,8 +4,8 @@ resource "aws_lambda_function" "lambda_registration" {
   package_type  = var.package_type
   image_uri     = var.image_uri
 
-  memory_size   = var.memory_size
-  timeout       = var.timeout
+  memory_size = var.memory_size
+  timeout     = var.timeout
 
   vpc_config {
     subnet_ids         = var.subnet_ids

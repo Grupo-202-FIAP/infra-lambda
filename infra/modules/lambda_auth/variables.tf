@@ -21,7 +21,7 @@ variable "role_arn" {
 variable "lambda_auth_image_tag" {
   description = "A tag da imagem Docker enviada para o ECR (ex: latest, v1.0.0)"
   type        = string
-  default     = "latest" 
+  default     = "latest"
 }
 
 variable "package_type" {
