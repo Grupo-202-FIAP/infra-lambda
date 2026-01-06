@@ -55,12 +55,3 @@ variable "lambda_registration_name" {
   description = "Nome da função Lambda unificada responsável pelo registro e sincronização (Customer e Internal)."
   type        = string
 }
-
-
-# ==========================
-# Banco de Dados (RDS)
-# ==========================
-variable "db_name" {
-  description = "Nome do banco de dados no RDS (obtido do Parameter Store)."
-  type        = string
-}
