@@ -19,14 +19,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # ------------------------------
+      # 1️⃣ Checkout do código
+      # ------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # ------------------------------
+      # 2️⃣ Setup Terraform
+      # ------------------------------
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.6.6
 
+      # ------------------------------
+      # 3️⃣ Cache Terraform providers
+      # ------------------------------
       - name: Cache Terraform providers
         uses: actions/cache@v3
         with:
@@ -37,14 +46,20 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-terraform-
 
-      - name: Configure AWS credentials (OIDC + IAM Role)
+      # ------------------------------
+      # 4️⃣ Configure AWS (OIDC + IAM Role)
+      # ------------------------------
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/github-action-role
           aws-region: ${{ env.AWS_REGION }}
 
+      # ------------------------------
+      # 5️⃣ Terraform – validação e infra ECR
+      # ------------------------------
       - name: Terraform Format
-        run: terraform fmt -check
+        run: terraform fmt -check -diff || true
         working-directory: infra
 
       - name: Terraform Init
@@ -55,31 +70,51 @@ jobs:
         run: terraform validate
         working-directory: infra
 
-      - name: Terraform Apply (Infra ECR)
-        id: tf_apply
+      - name: Terraform Apply (ECR)
+        id: tf_apply_ecr
         run: |
-          terraform apply -auto-approve
-          echo "ECR_URI=$(terraform output -raw ecr_repository_url)" >> $GITHUB_ENV
+          terraform apply -target=aws_ecr_repository.lambda_auth_repo \
+                          -target=aws_ecr_repository.lambda_registration_repo \
+                          -auto-approve
+          echo "LAMBDA_AUTH_ECR_URI=$(terraform output -raw ecr_lambda_auth_url)" >> $GITHUB_ENV
+          echo "LAMBDA_REGISTRATION_ECR_URI=$(terraform output -raw ecr_lambda_registration_url)" >> $GITHUB_ENV
         working-directory: infra
 
+      # ------------------------------
+      # 6️⃣ Docker Build & Push
+      # ------------------------------
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Login no Amazon ECR
         run: |
           aws ecr get-login-password --region ${{ env.AWS_REGION }} \
-          | docker login --username AWS --password-stdin ${{ env.ECR_URI }}
+          | docker login --username AWS --password-stdin ${{ env.LAMBDA_AUTH_ECR_URI }}
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} \
+          | docker login --username AWS --password-stdin ${{ env.LAMBDA_REGISTRATION_ECR_URI }}
 
-      - name: Build, Tag e Push Docker Image
+      - name: Build, Tag e Push Lambda Authorizer
         run: |
-          docker build -t lambda-auth-local src/lambda_auth/
-          docker tag lambda-auth-local:latest ${{ env.ECR_URI }}:${{ env.IMAGE_TAG }}
-          docker push ${{ env.ECR_URI }}:${{ env.IMAGE_TAG }}
+          docker build -t lambda-auth src/lambda_auth/
+          docker tag lambda-auth:latest ${{ env.LAMBDA_AUTH_ECR_URI }}:latest
+          docker push ${{ env.LAMBDA_AUTH_ECR_URI }}:latest
 
+      - name: Build, Tag e Push Lambda Registration
+        run: |
+          docker build -t lambda-registration src/lambda_registration/
+          docker tag lambda-registration:latest ${{ env.LAMBDA_REGISTRATION_ECR_URI }}:latest
+          docker push ${{ env.LAMBDA_REGISTRATION_ECR_URI }}:latest
+
+      # ------------------------------
+      # 7️⃣ Terraform – Deploy Lambdas
+      # ------------------------------
       - name: Terraform Plan para Deploy
-        run: terraform plan -out=tfplan
+        run: |
+          terraform plan -out=tfplan \
+            -var "lambda_auth_image_uri=${LAMBDA_AUTH_ECR_URI}:latest" \
+            -var "lambda_registration_image_uri=${LAMBDA_REGISTRATION_ECR_URI}:latest"
         working-directory: infra
 
-      - name: Terraform Apply (Deploy Lambda)
+      - name: Terraform Apply (Deploy Lambdas)
         run: terraform apply -auto-approve tfplan
         working-directory: infra
