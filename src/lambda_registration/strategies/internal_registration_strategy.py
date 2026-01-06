@@ -9,10 +9,8 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 REGION = os.environ.get("REGION", "us-east-1")
-SQS_QUEUE_URL = os.environ.get("SQS_QUEUE_URL")
 
-sqs_client = boto3.client("sqs", region_name=REGION)
-
+//ToDo: retirar ou configurar cliente SQS
 
 class InternalRegistrationStrategy:
 
