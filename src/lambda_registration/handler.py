@@ -69,7 +69,11 @@ def handler(event, context):
     try:
         logger.info(f"Iniciando sync automático com strategy '{sync_class.__name__}'")
         sync_strategy = sync_class()
-        sync_result = sync_strategy.execute(body)
+
+        reg_body = json.loads(reg_result["body"]) if reg_result.get("body") else {}
+        sync_payload = {**body, "userId": reg_body.get("userId")}
+
+        sync_result = sync_strategy.execute(sync_payload)
         logger.info(f"Resultado do sync: {sync_result}")
     except Exception as e:
         logger.exception(f"Erro inesperado durante o sync: {e}")

@@ -126,6 +126,119 @@ resource "aws_iam_role_policy_attachment" "attach_lambda_registration" {
 }
 
 
+# IAM role & policy for Lambda Get User
+module "lambda_get_user_role" {
+  source    = "./modules/iam/roles"
+  role_name = "LambdaGetUserRole"
+}
+
+module "lambda_get_user_policy" {
+  source      = "./modules/iam/policies"
+  policy_name = "LambdaGetUserPolicy"
+  description = "Permissões para Lambda de busca de usuários"
+  policy_document = {
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter",
+          "ssm:GetParameters",
+          "ssm:GetParametersByPath"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateNetworkInterface",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DeleteNetworkInterface"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = "*"
+      }
+    ]
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "attach_lambda_get_user" {
+  role       = module.lambda_get_user_role.role_name
+  policy_arn = module.lambda_get_user_policy.policy_arn
+}
+
+# IAM role & policy for Lambda List Users
+module "lambda_list_users_role" {
+  source    = "./modules/iam/roles"
+  role_name = "LambdaListUsersRole"
+}
+
+module "lambda_list_users_policy" {
+  source      = "./modules/iam/policies"
+  policy_name = "LambdaListUsersPolicy"
+  description = "Permissões para Lambda de listagem de usuários"
+  policy_document = {
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter",
+          "ssm:GetParameters",
+          "ssm:GetParametersByPath"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateNetworkInterface",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DeleteNetworkInterface"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = "*"
+      }
+    ]
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "attach_lambda_list_users" {
+  role       = module.lambda_list_users_role.role_name
+  policy_arn = module.lambda_list_users_policy.policy_arn
+}
+
+
 resource "aws_ecr_repository" "lambda_auth_repo" {
   name                 = "lambda-authorizer-repo"
   image_tag_mutability = "MUTABLE"
@@ -137,6 +250,24 @@ resource "aws_ecr_repository" "lambda_auth_repo" {
 
 resource "aws_ecr_repository" "lambda_registration_repo" {
   name                 = "lambda-registration-repo"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
+resource "aws_ecr_repository" "lambda_get_user_repo" {
+  name                 = "lambda-get-user-repo"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
+resource "aws_ecr_repository" "lambda_list_users_repo" {
+  name                 = "lambda-list-users-repo"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -189,6 +320,60 @@ module "lambda_registration" {
   security_group_ids = [data.terraform_remote_state.network.outputs.security_group_postgres_id]
 
   depends_on = [aws_ecr_repository.lambda_registration_repo]
+}
+
+# --- Lambda Get User ---
+module "lambda_get_user" {
+  source        = "./modules/lambda_get_user"
+  function_name = var.lambda_get_user_name
+  role_arn      = module.lambda_get_user_role.role_arn
+  role_name     = module.lambda_get_user_role.role_name
+  image_uri     = local.lambda_get_user_image_uri
+  package_type  = var.package_type
+  timeout       = var.timeout
+  memory_size   = var.memory_size
+
+  environment_variables = {
+    REGION         = var.aws_region
+    DB_HOST        = var.db_host
+    DB_USER        = var.db_user
+    DB_PASSWORD    = var.db_password
+    DB_NAME        = var.db_name
+    CUSTOMER_TABLE = var.customer_table
+    INTERNAL_TABLE = var.internal_table
+  }
+
+  subnet_ids         = data.terraform_remote_state.network.outputs.private_subnet_ids
+  security_group_ids = [data.terraform_remote_state.network.outputs.security_group_postgres_id]
+
+  depends_on = [aws_ecr_repository.lambda_get_user_repo]
+}
+
+# --- Lambda List Users ---
+module "lambda_list_users" {
+  source        = "./modules/lambda_list_users"
+  function_name = var.lambda_list_users_name
+  role_arn      = module.lambda_list_users_role.role_arn
+  role_name     = module.lambda_list_users_role.role_name
+  image_uri     = local.lambda_list_users_image_uri
+  package_type  = var.package_type
+  timeout       = var.timeout
+  memory_size   = var.memory_size
+
+  environment_variables = {
+    REGION         = var.aws_region
+    DB_HOST        = var.db_host
+    DB_USER        = var.db_user
+    DB_PASSWORD    = var.db_password
+    DB_NAME        = var.db_name
+    CUSTOMER_TABLE = var.customer_table
+    INTERNAL_TABLE = var.internal_table
+  }
+
+  subnet_ids         = data.terraform_remote_state.network.outputs.private_subnet_ids
+  security_group_ids = [data.terraform_remote_state.network.outputs.security_group_postgres_id]
+
+  depends_on = [aws_ecr_repository.lambda_list_users_repo]
 }
 
 # --- Lambda Permissions para Cognito ---
