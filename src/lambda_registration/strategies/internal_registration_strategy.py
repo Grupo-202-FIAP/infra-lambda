@@ -1,18 +1,17 @@
 import os
-import json
-import boto3
 import logging
 from botocore.exceptions import ClientError
 from ..utils.responses import response
+from ..utils.cognito_client import CognitoClient
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-REGION = os.environ.get("REGION", "us-east-1")
-
-//ToDo: retirar ou configurar cliente SQS
-
 class InternalRegistrationStrategy:
+    def __init__(self, cognito: CognitoClient = None):
+        self.cognito = cognito or CognitoClient()
+        self.user_pool_id = os.getenv("INTERNAL_USER_POOL_ID")
+        logger.info(f"[InternalRegistrationStrategy] Inicializado com USER_POOL_ID={self.user_pool_id}")
 
     def execute(self, data):
         logger.info(f"[InternalRegistration] Iniciando execução com dados: {data}")
@@ -25,64 +24,41 @@ class InternalRegistrationStrategy:
             logger.warning("[InternalRegistration] Campos obrigatórios ausentes: email e/ou password.")
             return response(400, {"message": "Obrigatório enviar email e password"})
 
-        if not SQS_QUEUE_URL:
-            logger.error("[InternalRegistration] SQS_QUEUE_URL não configurada nas variáveis de ambiente")
-            return response(500, {"message": "Configuração SQS não encontrada"})
-
         try:
-            logger.info(f"[InternalRegistration] Publicando mensagem no SQS para email={email}")
-            
-            # Preparar mensagem para o SQS
-            message_body = {
-                "type": "internal",
-                "action": "register",
-                "data": {
-                    "email": email,
-                    "password": password,
-                    "name": name,
-                    "user_attributes": [
-                        {"Name": "email", "Value": email},
-                        {"Name": "email_verified", "Value": "true"},
-                    ]
-                }
-            }
-            
-            # Adicionar name aos atributos se fornecido
-            if name:
-                message_body["data"]["user_attributes"].append({"Name": "name", "Value": name})
+            logger.info(f"[InternalRegistration] Verificando existência do usuário com email={email}")
+            existing = self.cognito.get_user_by_username(self.user_pool_id, email)
 
-            # Publicar mensagem no SQS
-            response_sqs = sqs_client.send_message(
-                QueueUrl=SQS_QUEUE_URL,
-                MessageBody=json.dumps(message_body),
-                MessageAttributes={
-                    "type": {
-                        "StringValue": "internal",
-                        "DataType": "String"
-                    },
-                    "action": {
-                        "StringValue": "register",
-                        "DataType": "String"
-                    },
-                    "email": {
-                        "StringValue": email,
-                        "DataType": "String"
-                    }
-                }
+            if existing:
+                logger.info(f"[InternalRegistration] Usuário com email={email} já cadastrado no Cognito.")
+                return response(409, {"message": "Usuário já cadastrado"})
+
+            logger.info(f"[InternalRegistration] Criando novo usuário com email={email}")
+            user_attributes = [
+                {"Name": "email", "Value": email},
+                {"Name": "email_verified", "Value": "true"}
+            ]
+            if name:
+                user_attributes.append({"Name": "name", "Value": name})
+
+            user = self.cognito.admin_create_user(
+                user_pool_id=self.user_pool_id,
+                username=email,
+                user_attributes=user_attributes,
+                temporary_password=password,
+                message_action="SUPPRESS"
             )
 
-            message_id = response_sqs.get("MessageId")
-            logger.info(f"[InternalRegistration] Mensagem publicada no SQS com sucesso. MessageId={message_id}")
+            user_id = user.get("User", {}).get("Username")
+            logger.info(f"[InternalRegistration] Usuário criado com sucesso: userId={user_id}")
 
             return response(201, {
-                "message": "Solicitação de registro de usuário interno enviada para processamento",
-                "messageId": message_id,
-                "queueUrl": SQS_QUEUE_URL
+                "message": "Usuário cadastrado com sucesso",
+                "userId": user_id
             })
 
         except ClientError as e:
-            logger.exception(f"[InternalRegistration] Erro SQS ao publicar mensagem email={email}: {e}")
-            return response(500, {"message": f"Erro ao publicar no SQS: {e}"})
+            logger.exception(f"[InternalRegistration] Erro Cognito ao criar usuário email={email}: {e}")
+            return response(500, {"message": f"Erro Cognito: {e}"})
 
         except Exception as e:
             logger.exception(f"[InternalRegistration] Erro inesperado: {e}")
