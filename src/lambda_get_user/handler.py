@@ -1,21 +1,19 @@
 import json
 import logging
-from lambda_get_customer.strategies.get_customer_strategy import GetCustomerStrategy
-from lambda_get_customer.utils.responses import response
+from lambda_get_user.strategies.get_user_strategy import GetUserStrategy
+from lambda_get_user.utils.responses import response
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
 def handler(event, context):
-    logger.info("==== Iniciando execução da Lambda de busca de cliente ====")
+    logger.info("==== Iniciando execução da Lambda de busca de usuário ====")
     logger.info(f"Evento recebido: {json.dumps(event)}")
 
     try:
-        # Tentar buscar parâmetros de query string (GET request)
         query_params = event.get("queryStringParameters", {})
-        
-        # Se não houver query params, tentar buscar do body (POST request)
+
         if not query_params or query_params is None:
             try:
                 body = json.loads(event.get("body", "{}"))
@@ -27,26 +25,25 @@ def handler(event, context):
         else:
             logger.info(f"Parâmetros extraídos de queryStringParameters: {query_params}")
 
-        # Validar que pelo menos um parâmetro foi fornecido
-        customer_id = query_params.get("customer_id")
+        # Compatibilidade de nomes de parâmetros
+        uid = query_params.get("user_id") or query_params.get("id") or query_params.get("customer_id")
         email = query_params.get("email")
         cpf = query_params.get("cpf")
 
-        if not any([customer_id, email, cpf]):
+        if not any([uid, email, cpf]):
             logger.warning("Nenhum parâmetro de busca fornecido")
             return response(400, {
-                "message": "É necessário fornecer pelo menos um parâmetro de busca: customer_id, email ou cpf"
+                "message": "É necessário fornecer pelo menos um parâmetro de busca: user_id/id/customer_id, email ou cpf"
             })
 
-        logger.info(f"Iniciando busca com parâmetros: customer_id={customer_id}, email={email}, cpf={cpf}")
+        logger.info(f"Iniciando busca com parâmetros: user_id={uid}, email={email}, cpf={cpf}")
 
-        # Executar a estratégia de busca
-        strategy = GetCustomerStrategy()
+        strategy = GetUserStrategy()
         result = strategy.execute(query_params)
 
         logger.info(f"Resultado da busca: {result}")
         logger.info("==== Execução concluída com sucesso ====")
-        
+
         return result
 
     except ValueError as e:

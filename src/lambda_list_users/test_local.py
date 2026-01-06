@@ -3,14 +3,13 @@ import os
 from handler import handler
 
 if __name__ == "__main__":
-    # Configurar variáveis de ambiente para teste local
     os.environ["DB_HOST"] = "localhost:5432"
     os.environ["DB_USER"] = "postgres"
     os.environ["DB_PASSWORD"] = "postgres"
     os.environ["DB_NAME"] = "pos_db"
     os.environ["CUSTOMER_TABLE"] = "customers"
+    os.environ["INTERNAL_TABLE"] = "internal_users"
 
-    # Teste 1: Listar primeira página sem filtros
     print("=== Teste 1: Listar primeira página (sem filtros) ===")
     event_1 = {
         "queryStringParameters": {
@@ -23,20 +22,6 @@ if __name__ == "__main__":
     print(json.dumps(response_1, indent=2, default=str))
     print()
 
-    # Teste 2: Listar segunda página
-    print("=== Teste 2: Listar segunda página ===")
-    event_2 = {
-        "queryStringParameters": {
-            "page": "2",
-            "per_page": "10"
-        },
-        "body": None
-    }
-    response_2 = handler(event_2, None)
-    print(json.dumps(response_2, indent=2, default=str))
-    print()
-
-    # Teste 3: Filtrar por email
     print("=== Teste 3: Filtrar por email ===")
     event_3 = {
         "queryStringParameters": {
@@ -50,8 +35,7 @@ if __name__ == "__main__":
     print(json.dumps(response_3, indent=2, default=str))
     print()
 
-    # Teste 4: Filtrar por status
-    print("=== Teste 4: Filtrar por status ===")
+    print("=== Teste 4: Filtrar por status (aplica clientes) ===")
     event_4 = {
         "queryStringParameters": {
             "status": "active",
@@ -64,7 +48,6 @@ if __name__ == "__main__":
     print(json.dumps(response_4, indent=2, default=str))
     print()
 
-    # Teste 5: Sem parâmetros (usa defaults)
     print("=== Teste 5: Sem parâmetros (usa defaults) ===")
     event_5 = {
         "queryStringParameters": None,
@@ -73,15 +56,3 @@ if __name__ == "__main__":
     response_5 = handler(event_5, None)
     print(json.dumps(response_5, indent=2, default=str))
     print()
-
-    # Teste 6: Parâmetros inválidos
-    print("=== Teste 6: Parâmetros inválidos ===")
-    event_6 = {
-        "queryStringParameters": {
-            "page": "abc",
-            "per_page": "10"
-        },
-        "body": None
-    }
-    response_6 = handler(event_6, None)
-    print(json.dumps(response_6, indent=2, default=str))
