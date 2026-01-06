@@ -5,34 +5,44 @@ on:
     branches:
       - dev
 
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  IMAGE_TAG: latest
+
 jobs:
   test-and-deploy:
     runs-on: ubuntu-latest
 
-    env:
-      AWS_REGION: sa-east-1   # ajuste conforme sua região
-      IMAGE_TAG: latest       # você pode usar github.sha para versionamento automático
-
     steps:
-      # ------------------------------
-      # 1️⃣ Checkout do repositório
-      # ------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ------------------------------
-      # 2️⃣ Configurar credenciais AWS
-      # ------------------------------
-      - name: Configure AWS credentials
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+
+      - name: Cache Terraform providers
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.terraform.d/plugin-cache
+            infra/.terraform
+          key: ${{ runner.os }}-terraform-${{ hashFiles('infra/**/*.tf*') }}
+          restore-keys: |
+            ${{ runner.os }}-terraform-
+
+      - name: Configure AWS credentials (OIDC + IAM Role)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/github-action-role
           aws-region: ${{ env.AWS_REGION }}
 
-      # ------------------------------
-      # 3️⃣ Terraform – validação inicial
-      # ------------------------------
       - name: Terraform Format
         run: terraform fmt -check
         working-directory: infra
@@ -45,9 +55,6 @@ jobs:
         run: terraform validate
         working-directory: infra
 
-      # ------------------------------
-      # 4️⃣ Terraform Apply – cria ECR e captura URI
-      # ------------------------------
       - name: Terraform Apply (Infra ECR)
         id: tf_apply
         run: |
@@ -55,9 +62,6 @@ jobs:
           echo "ECR_URI=$(terraform output -raw ecr_repository_url)" >> $GITHUB_ENV
         working-directory: infra
 
-      # ------------------------------
-      # 5️⃣ Docker – Build, Tag e Push
-      # ------------------------------
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -72,9 +76,6 @@ jobs:
           docker tag lambda-auth-local:latest ${{ env.ECR_URI }}:${{ env.IMAGE_TAG }}
           docker push ${{ env.ECR_URI }}:${{ env.IMAGE_TAG }}
 
-      # ------------------------------
-      # 6️⃣ Terraform – Deploy Lambda
-      # ------------------------------
       - name: Terraform Plan para Deploy
         run: terraform plan -out=tfplan
         working-directory: infra
