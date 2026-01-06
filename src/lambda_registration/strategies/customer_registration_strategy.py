@@ -7,7 +7,6 @@ from ..utils.cognito_client import CognitoClient
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-
 class CustomerRegistrationStrategy:
     def __init__(self, cognito: CognitoClient = None):
         self.cognito = cognito or CognitoClient()
