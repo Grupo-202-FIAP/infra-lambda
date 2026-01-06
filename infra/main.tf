@@ -183,7 +183,6 @@ module "lambda_registration" {
     INTERNAL_USER_POOL_ID  = module.cognito_user_pool_internal.user_pool_id
     INTERNAL_APP_CLIENT_ID = module.cognito_user_pool_internal.app_client_id
     REGION                 = var.aws_region
-    SQS_QUEUE_URL          = data.terraform_remote_state.network.outputs.sqs_queue_url
   }
 
   subnet_ids         = data.terraform_remote_state.network.outputs.private_subnet_ids
