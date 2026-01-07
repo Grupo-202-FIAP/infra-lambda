@@ -21,8 +21,8 @@ class CustomerSyncStrategy:
         name = data.get("name")
 
         if not user_id:
-            logger.warning("[CustomerSync] userId obrigatorio para sincronizacao")
-            return response(400, {"message": "userId obrigatorio para sincronizacao"})
+            logger.warning("[CustomerSync] userId obrigatório para sincronização")
+            return response(400, {"message": "userId obrigatório para sincronização"})
 
         query = (
             f"INSERT INTO {self.table_name} (cognito_user_id, cpf, email, name) "

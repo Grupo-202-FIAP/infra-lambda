@@ -20,8 +20,8 @@ class InternalSyncStrategy:
         name = data.get("name")
 
         if not user_id or not email:
-            logger.warning("[InternalSync] userId e email sao obrigatorios para sincronizacao")
-            return response(400, {"message": "userId e email sao obrigatorios para sincronizacao"})
+            logger.warning("[InternalSync] userId e email são obrigatórios para sincronização")
+            return response(400, {"message": "userId e email são obrigatórios para sincronização"})
 
         query = (
             f"INSERT INTO {self.table_name} (cognito_user_id, email, name) "
