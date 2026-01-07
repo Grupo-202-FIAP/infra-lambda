@@ -1,5 +1,7 @@
 import os
+import json
 import logging
+import boto3
 from botocore.exceptions import ClientError
 from ..utils.responses import response
 from ..utils.cognito_client import CognitoClient
@@ -7,6 +9,9 @@ from ..utils.db_client import DBClient
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+# Cliente SQS em nível de módulo para facilitar mocking nos testes
+sqs_client = boto3.client("sqs", region_name=os.getenv("REGION", os.getenv("AWS_REGION", "us-east-1")))
 
 class InternalRegistrationStrategy:
     def __init__(self, cognito: CognitoClient = None, db_client: DBClient = None):
@@ -63,11 +68,6 @@ class InternalRegistrationStrategy:
                 "message": "Usuário interno cadastrado com sucesso",
                 "userId": user_id
             })
-
-        except ClientError as e:
-            logger.exception(f"[InternalRegistration] Erro Cognito ao criar usuário email={email}: {e}")
-            return response(500, {"message": f"Erro Cognito: {e}"})
-
         except Exception as e:
-            logger.exception(f"[InternalRegistration] Erro inesperado: {e}")
-            return response(500, {"message": f"Erro interno: {e}"})
+            logger.exception(f"[InternalRegistration] Erro ao enviar mensagem para SQS: {e}")
+            return response(500, {"message": f"Erro ao enfileirar solicitação: {e}"})
