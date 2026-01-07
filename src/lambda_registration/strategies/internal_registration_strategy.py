@@ -69,5 +69,5 @@ class InternalRegistrationStrategy:
                 "userId": user_id
             })
         except Exception as e:
-            logger.exception(f"[InternalRegistration] Erro ao enviar mensagem para SQS: {e}")
-            return response(500, {"message": f"Erro ao enfileirar solicitação: {e}"})
+            logger.exception(f"[InternalRegistration] Erro ao processar registro interno: {e}")
+            return response(500, {"message": "Erro interno ao processar solicitação"})
