@@ -1,6 +1,21 @@
-output "ecr_repository_url" {
-  description = "URL do ECR para fazer o docker push da imagem Lambda Authorizer"
+output "ecr_lambda_auth_url" {
+  description = "URL do ECR da Lambda Authorizer"
   value       = aws_ecr_repository.lambda_auth_repo.repository_url
+}
+
+output "ecr_lambda_registration_url" {
+  description = "URL do ECR da Lambda Registration"
+  value       = aws_ecr_repository.lambda_registration_repo.repository_url
+}
+
+output "ecr_lambda_get_user_url" {
+  description = "URL do ECR da Lambda Get User"
+  value       = aws_ecr_repository.lambda_get_user_repo.repository_url
+}
+
+output "ecr_lambda_list_users_url" {
+  description = "URL do ECR da Lambda List Users"
+  value       = aws_ecr_repository.lambda_list_users_repo.repository_url
 }
 
 output "lambda_authorizer_function_name" {
