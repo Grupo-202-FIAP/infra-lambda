@@ -335,9 +335,9 @@ module "lambda_get_user" {
 
   environment_variables = {
     REGION         = var.aws_region
-    DB_HOST        = var.db_host
-    DB_USER        = var.db_user
-    DB_PASSWORD    = var.db_password
+    DB_HOST        = data.terraform_remote_state.database.outputs.rds_endpoint
+    DB_USER        = data.terraform_remote_state.database.outputs.rds_username
+    DB_PASSWORD    = data.aws_ssm_parameter.rds_password.value
     DB_NAME        = var.db_name
     CUSTOMER_TABLE = var.customer_table
     INTERNAL_TABLE = var.internal_table
@@ -362,9 +362,9 @@ module "lambda_list_users" {
 
   environment_variables = {
     REGION         = var.aws_region
-    DB_HOST        = var.db_host
-    DB_USER        = var.db_user
-    DB_PASSWORD    = var.db_password
+    DB_HOST        = data.terraform_remote_state.database.outputs.rds_endpoint
+    DB_USER        = data.terraform_remote_state.database.outputs.rds_username
+    DB_PASSWORD    = data.aws_ssm_parameter.rds_password.value
     DB_NAME        = var.db_name
     CUSTOMER_TABLE = var.customer_table
     INTERNAL_TABLE = var.internal_table
