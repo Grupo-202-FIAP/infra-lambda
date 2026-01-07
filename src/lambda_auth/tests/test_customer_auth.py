@@ -3,14 +3,14 @@ import jwt
 import os
 import json
 from unittest.mock import patch
-from strategies.customer_auth import CustomerAuthStrategy
+from lambda_auth.strategies.customer_auth import CustomerAuthStrategy
 
 
 @pytest.fixture
 def strategy():
     return CustomerAuthStrategy()
 
-@patch("strategies.customer_auth.cognito_client.list_users")
+@patch("lambda_auth.strategies.customer_auth.cognito_client.list_users")
 def test_customer_auth_success(mock_list, strategy):
     mock_list.return_value = {"Users": [{"Username": "12345678900"}]}
     body = {"cpf": "12345678900"}
@@ -26,7 +26,7 @@ def test_customer_auth_success(mock_list, strategy):
     )
     assert data["role"] == "ROLE_CUSTOMER"
 
-@patch("strategies.customer_auth.cognito_client.list_users")
+@patch("lambda_auth.strategies.customer_auth.cognito_client.list_users")
 def test_customer_auth_not_found(mock_list, strategy):
     mock_list.return_value = {"Users": []}
     body = {"cpf": "99999999999"}

@@ -1,6 +1,6 @@
 import json
 import pytest
-from handler import handler
+from lambda_auth.handler import handler
 
 def test_handler_missing_type():
     event = {"body": json.dumps({})}
