@@ -35,4 +35,4 @@ class InternalSyncStrategy:
             return response(200, {"message": "Interno sincronizado com sucesso"})
         except Exception as e:
             logger.exception(f"[InternalSync] Falha ao sincronizar: {e}")
-            return response(500, {"message": f"Erro ao sincronizar interno: {e}"})
+            return response(500, {"message": "Erro ao sincronizar interno"})

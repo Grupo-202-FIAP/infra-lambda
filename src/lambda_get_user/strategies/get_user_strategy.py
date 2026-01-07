@@ -35,7 +35,7 @@ class GetUserStrategy(BaseStrategy):
                 where.append("cpf = %s")
                 params.append(cpf)
                 if user_id:
-                    where.append("id = %s")
+                    where.append("id = %s::uuid")
                     params.append(user_id)
                 if email:
                     where.append("email = %s")
@@ -49,7 +49,7 @@ class GetUserStrategy(BaseStrategy):
             cust_where = []
             cust_params = []
             if user_id:
-                cust_where.append("id = %s")
+                cust_where.append("id = %s::uuid")
                 cust_params.append(user_id)
             if email:
                 cust_where.append("email = %s")
@@ -66,7 +66,7 @@ class GetUserStrategy(BaseStrategy):
                 int_where = []
                 int_params = []
                 if user_id:
-                    int_where.append("id = %s")
+                    int_where.append("id = %s::uuid")
                     int_params.append(user_id)
                 if email:
                     int_where.append("email = %s")
@@ -82,7 +82,7 @@ class GetUserStrategy(BaseStrategy):
         except Exception as e:
             logger.exception(f"[GetUserStrategy] Erro ao buscar usuário: {e}")
             return response(500, {
-                "message": f"Erro interno ao buscar usuário: {str(e)}"
+                "message": "Erro interno ao buscar usuário"
             })
 
     def _respond_user(self, user):
@@ -138,7 +138,7 @@ class GetUserStrategy(BaseStrategy):
                 query_conditions = ["cpf = %s"]
                 query_params = [cpf]
                 if user_id:
-                    query_conditions.append("id = %s")
+                    query_conditions.append("id = %s::uuid")
                     query_params.append(user_id)
                 if email:
                     query_conditions.append("email = %s")
@@ -166,7 +166,7 @@ class GetUserStrategy(BaseStrategy):
                 query_conditions = []
                 query_params = []
                 if user_id:
-                    query_conditions.append("id = %s")
+                    query_conditions.append("id = %s::uuid")
                     query_params.append(user_id)
                 if email:
                     query_conditions.append("email = %s")
@@ -190,7 +190,7 @@ class GetUserStrategy(BaseStrategy):
                 query_conditions = []
                 query_params = []
                 if user_id:
-                    query_conditions.append("id = %s")
+                    query_conditions.append("id = %s::uuid")
                     query_params.append(user_id)
                 if email:
                     query_conditions.append("email = %s")
@@ -215,4 +215,4 @@ class GetUserStrategy(BaseStrategy):
 
         except Exception as e:
             logger.exception(f"[GetUserStrategy] Erro ao buscar usuário: {e}")
-            return response(500, {"message": f"Erro interno ao buscar usuário: {str(e)}"})
+            return response(500, {"message": "Erro interno ao buscar usuário"})

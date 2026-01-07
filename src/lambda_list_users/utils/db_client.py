@@ -54,7 +54,7 @@ class DBClient:
                 logger.info("[DBClient] Conexão PostgreSQL estabelecida com sucesso.")
             except Exception as e:
                 logger.exception(f"[DBClient] Erro ao conectar no PostgreSQL: {str(e)}")
-                raise ValueError(f"Erro ao conectar no PostgreSQL: {str(e)}")
+                raise ValueError("Erro de conexão ao banco de dados")
         
         return self._conn
 

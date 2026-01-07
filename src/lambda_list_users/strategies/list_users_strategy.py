@@ -125,4 +125,4 @@ class ListUsersStrategy(BaseStrategy):
             })
         except Exception as e:
             logger.exception(f"[ListUsersStrategy] Erro ao listar usuários: {e}")
-            return response(500, {"message": f"Erro interno ao listar usuários: {str(e)}"})
+            return response(500, {"message": "Erro interno ao listar usuários"})

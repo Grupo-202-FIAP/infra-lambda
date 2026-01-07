@@ -36,4 +36,4 @@ class CustomerSyncStrategy:
             return response(200, {"message": "Customer sincronizado com sucesso"})
         except Exception as e:
             logger.exception(f"[CustomerSync] Falha ao sincronizar: {e}")
-            return response(500, {"message": f"Erro ao sincronizar customer: {e}"})
+            return response(500, {"message": "Erro ao sincronizar customer"})
