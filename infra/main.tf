@@ -116,6 +116,17 @@ module "lambda_registration_policy" {
         ]
         Resource = "*"
       }
+      ,
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage"
+        ]
+        Resource = "*"
+      }
     ]
   }
 }
