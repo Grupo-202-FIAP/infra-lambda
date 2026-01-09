@@ -20,3 +20,8 @@ data "aws_ssm_parameter" "rds_password" {
   name            = data.terraform_remote_state.database.outputs.rds_password_ssm_param
   with_decryption = true
 }
+
+data "aws_ssm_parameter" "jwt_secret" {
+  name            = "/fastfood/jwt_secret"
+  with_decryption = true
+}

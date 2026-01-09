@@ -8,6 +8,24 @@ module "cognito_user_pool_internal" {
   project_name = var.project_name
 }
 
+# Gerar JWT Secret e armazenar em SSM
+resource "random_string" "jwt_secret" {
+  length  = 32
+  special = true
+}
+
+resource "aws_ssm_parameter" "jwt_secret" {
+  name            = "/fastfood/jwt_secret"
+  description     = "JWT Secret para Lambda Authorizer"
+  type            = "SecureString"
+  value           = random_string.jwt_secret.result
+  overwrite       = false
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
 module "lambda_role" {
   source    = "./modules/iam/roles"
   role_name = "LambdaAuthorizerRole"
@@ -35,6 +53,22 @@ module "lambda_policy" {
           "cognito-idp:AdminInitiateAuth",
           "cognito-idp:AdminRespondToAuthChallenge",
           "cognito-idp:ListUsers"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter"
+        ]
+        Resource = "arn:aws:ssm:*:*:parameter/fastfood/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateNetworkInterface",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DeleteNetworkInterface"
         ]
         Resource = "*"
       }
@@ -86,10 +120,9 @@ module "lambda_registration_policy" {
         Effect = "Allow"
         Action = [
           "ssm:GetParameter",
-          "ssm:GetParameters",
-          "ssm:GetParametersByPath"
+          "ssm:GetParameters"
         ]
-        Resource = "*"
+        Resource = "arn:aws:ssm:*:*:parameter/fastfood/*"
       },
       {
         Effect = "Allow"
@@ -115,8 +148,7 @@ module "lambda_registration_policy" {
           "sqs:GetQueueUrl"
         ]
         Resource = "*"
-      }
-      ,
+      },
       {
         Effect = "Allow"
         Action = [
@@ -163,10 +195,9 @@ module "lambda_get_user_policy" {
         Effect = "Allow"
         Action = [
           "ssm:GetParameter",
-          "ssm:GetParameters",
-          "ssm:GetParametersByPath"
+          "ssm:GetParameters"
         ]
-        Resource = "*"
+        Resource = "arn:aws:ssm:*:*:parameter/fastfood/*"
       },
       {
         Effect = "Allow"
@@ -219,10 +250,9 @@ module "lambda_list_users_policy" {
         Effect = "Allow"
         Action = [
           "ssm:GetParameter",
-          "ssm:GetParameters",
-          "ssm:GetParametersByPath"
+          "ssm:GetParameters"
         ]
-        Resource = "*"
+        Resource = "arn:aws:ssm:*:*:parameter/fastfood/*"
       },
       {
         Effect = "Allow"
@@ -298,15 +328,21 @@ module "lambda_authorizer" {
   memory_size   = var.memory_size
   image_uri     = local.lambda_auth_image_uri
 
+  subnet_ids         = data.terraform_remote_state.network.outputs.private_subnet_ids
+  security_group_ids = [data.terraform_remote_state.network.outputs.sg_lambda_id]
+
   environment_variables = {
     CUSTOMER_USER_POOL_ID  = module.cognito_user_pool_customer.user_pool_id
     INTERNAL_USER_POOL_ID  = module.cognito_user_pool_internal.user_pool_id
     INTERNAL_APP_CLIENT_ID = module.cognito_user_pool_internal.app_client_id
     REGION                 = var.aws_region
-    JWT_SECRET             = "3"
+    JWT_SECRET             = data.aws_ssm_parameter.jwt_secret.value
   }
 
-  depends_on = [aws_ecr_repository.lambda_auth_repo]
+  depends_on = [
+    aws_ecr_repository.lambda_auth_repo,
+    aws_ssm_parameter.jwt_secret
+  ]
 }
 
 # --- Lambda Registration ---
@@ -325,16 +361,17 @@ module "lambda_registration" {
     INTERNAL_USER_POOL_ID  = module.cognito_user_pool_internal.user_pool_id
     INTERNAL_APP_CLIENT_ID = module.cognito_user_pool_internal.app_client_id
     REGION                 = var.aws_region
-    DB_HOST                = data.terraform_remote_state.database.outputs.rds_endpoint
+    DB_HOST                = data.terraform_remote_state.database.outputs.rds_address
+    DB_PORT                = tostring(data.terraform_remote_state.database.outputs.rds_port)
     DB_USER                = data.terraform_remote_state.database.outputs.rds_username
     DB_PASSWORD            = data.aws_ssm_parameter.rds_password.value
-    DB_NAME                = var.db_name
+    DB_NAME                = data.terraform_remote_state.database.outputs.rds_database_name
     CUSTOMER_TABLE         = var.customer_table
     INTERNAL_TABLE         = var.internal_table
   }
 
   subnet_ids         = data.terraform_remote_state.network.outputs.private_subnet_ids
-  security_group_ids = [data.terraform_remote_state.network.outputs.security_group_postgres_id]
+  security_group_ids = [data.terraform_remote_state.network.outputs.sg_lambda_id]
 
   depends_on = [aws_ecr_repository.lambda_registration_repo]
 }
@@ -352,16 +389,17 @@ module "lambda_get_user" {
 
   environment_variables = {
     REGION         = var.aws_region
-    DB_HOST        = data.terraform_remote_state.database.outputs.rds_endpoint
+    DB_HOST        = data.terraform_remote_state.database.outputs.rds_address
+    DB_PORT        = tostring(data.terraform_remote_state.database.outputs.rds_port)
     DB_USER        = data.terraform_remote_state.database.outputs.rds_username
     DB_PASSWORD    = data.aws_ssm_parameter.rds_password.value
-    DB_NAME        = var.db_name
+    DB_NAME        = data.terraform_remote_state.database.outputs.rds_database_name
     CUSTOMER_TABLE = var.customer_table
     INTERNAL_TABLE = var.internal_table
   }
 
   subnet_ids         = data.terraform_remote_state.network.outputs.private_subnet_ids
-  security_group_ids = [data.terraform_remote_state.network.outputs.security_group_postgres_id]
+  security_group_ids = [data.terraform_remote_state.network.outputs.sg_lambda_id]
 
   depends_on = [aws_ecr_repository.lambda_get_user_repo]
 }
@@ -379,16 +417,17 @@ module "lambda_list_users" {
 
   environment_variables = {
     REGION         = var.aws_region
-    DB_HOST        = data.terraform_remote_state.database.outputs.rds_endpoint
+    DB_HOST        = data.terraform_remote_state.database.outputs.rds_address
+    DB_PORT        = tostring(data.terraform_remote_state.database.outputs.rds_port)
     DB_USER        = data.terraform_remote_state.database.outputs.rds_username
     DB_PASSWORD    = data.aws_ssm_parameter.rds_password.value
-    DB_NAME        = var.db_name
+    DB_NAME        = data.terraform_remote_state.database.outputs.rds_database_name
     CUSTOMER_TABLE = var.customer_table
     INTERNAL_TABLE = var.internal_table
   }
 
   subnet_ids         = data.terraform_remote_state.network.outputs.private_subnet_ids
-  security_group_ids = [data.terraform_remote_state.network.outputs.security_group_postgres_id]
+  security_group_ids = [data.terraform_remote_state.network.outputs.sg_lambda_id]
 
   depends_on = [aws_ecr_repository.lambda_list_users_repo]
 }
