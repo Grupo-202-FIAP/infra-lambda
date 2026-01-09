@@ -82,7 +82,7 @@ class ListUsersStrategy(BaseStrategy):
             """
 
             # Count total
-            count_query = f"SELECT COUNT(*) AS total FROM {union_sql} AS users"
+            count_query = f"SELECT COUNT(*) AS total FROM ({union_sql}) AS users"
             count_params = tuple(cust_params + int_params) if (cust_params or int_params) else None
             logger.info(f"[ListUsersStrategy] Executando query de contagem unificada | params={count_params}")
             count_result = self.db.fetch_one(count_query, count_params)
@@ -91,7 +91,7 @@ class ListUsersStrategy(BaseStrategy):
             # Pagination
             offset = (page - 1) * per_page
             list_query = f"""
-                SELECT * FROM {union_sql} AS users
+                SELECT * FROM ({union_sql}) AS users
                 ORDER BY created_at DESC
                 LIMIT %s OFFSET %s
             """
