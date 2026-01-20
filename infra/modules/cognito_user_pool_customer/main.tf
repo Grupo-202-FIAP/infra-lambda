@@ -24,10 +24,6 @@ resource "aws_cognito_user_pool" "customer" {
       max_length = 14
     }
   }
-
-  lambda_config {
-    pre_sign_up = var.next_lambda
-  }
 }
 
 # App Client para Customer

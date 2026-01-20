@@ -9,4 +9,12 @@ terraform {
       version = "~> 5.0"
     }
   }
+
+  backend "s3" {
+    bucket  = "nextime-food-state-bucket"
+    key     = "lambda/infra.tfstate"
+    region  = "us-east-1"
+    encrypt = true
+  }
+
 }

@@ -21,10 +21,6 @@ resource "aws_cognito_user_pool" "internal" {
     required            = true
   }
 
-  lambda_config {
-    pre_sign_up = var.next_lambda
-  }
-
 }
 
 # App Client para Employee/Admin

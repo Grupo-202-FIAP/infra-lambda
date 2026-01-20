@@ -1,116 +1,102 @@
-variable "aws_region" {
-  description = "Região da AWS"
-  type        = string
-  default     = "us-east-1"
-}
-
+# ==========================
+# Configuração geral
+# ==========================
 variable "project_name" {
   description = "Nome do projeto ou aplicação principal (usado para prefixar recursos)."
   type        = string
 }
 
+variable "aws_region" {
+  description = "Região da AWS onde os recursos serão criados."
+  type        = string
+  default     = "us-east-1"
+}
+
 variable "account_id" {
-  description = "ID da conta AWS onde os recursos serão criados."
+  description = "ID da conta AWS utilizada para o deploy dos recursos."
   type        = string
 }
 
-variable "lambda_runtime" {
-  description = "Runtime do AWS Lambda a ser usado (ex: python3.9)."
+
+# ==========================
+# Lambda Authorizers
+# ==========================
+variable "authorizer_name" {
+  description = "Nome da função Lambda Authorizer."
   type        = string
 }
 
-variable "authorizer_customer_name" {
-  description = "Nome da função Lambda Authorizer para clientes externos."
+variable "lambda_image_tag" {
+  description = "A tag da imagem Docker enviada para o ECR (ex: latest, v1.0.0) que as Lambdas devem usar."
+  type        = string
+  default     = "latest"
+}
+
+variable "package_type" {
+  description = "Tipo de pacote da Lambda (ex: 'Zip' ou 'Image')."
   type        = string
 }
 
-variable "authorizer_customer_output_path" {
-  description = "Caminho local para o arquivo .zip de deploy do Authorizer Customer."
+variable "memory_size" {
+  description = "Quantidade de memória alocada (em MB) para a função Lambda."
+  type        = number
+}
+
+variable "timeout" {
+  description = "Tempo máximo de execução da função Lambda, em segundos."
+  type        = number
+}
+
+
+# ==========================
+# Lambda Registration/Sync
+# ==========================
+variable "lambda_registration_name" {
+  description = "Nome da função Lambda unificada responsável pelo registro e sincronização (Customer e Internal)."
   type        = string
 }
 
-variable "authorizer_customer_handler" {
-  description = "Nome do handler da função Authorizer Customer (ex: arquivo.funcao)."
+# ==========================
+# Lambda Get/List Users
+# ==========================
+variable "lambda_get_user_name" {
+  description = "Nome da função Lambda responsável por buscar usuários (customer/internal)."
   type        = string
 }
 
-variable "authorizer_internal_name" {
-  description = "Nome da função Lambda Authorizer para usuários internos/admin."
+variable "lambda_list_users_name" {
+  description = "Nome da função Lambda responsável por listar usuários (customer/internal)."
   type        = string
 }
 
-variable "authorizer_internal_output_path" {
-  description = "Caminho local para o arquivo .zip de deploy do Authorizer Internal."
+variable "db_host" {
+  description = "Host e porta do banco (ex: host:5432)."
   type        = string
 }
 
-variable "authorizer_internal_handler" {
-  description = "Nome do handler da função Authorizer Internal."
+variable "db_user" {
+  description = "Usuário do banco de dados."
   type        = string
 }
 
-variable "registration_customer_name" {
-  description = "Nome da função Lambda para o registro de clientes externos."
+variable "db_password" {
+  description = "Senha do banco de dados."
   type        = string
 }
 
-variable "lambda_archive_type" {
-  description = "Tipo de arquivo do pacote de código Lambda (ex: zip, Image)."
+variable "db_name" {
+  description = "Nome do banco de dados."
   type        = string
 }
 
-variable "registration_customer_output_path" {
-  description = "Caminho local para o arquivo .zip de deploy do Registration Customer."
+variable "customer_table" {
+  description = "Nome da tabela de customers."
   type        = string
+  default     = "customers"
 }
 
-variable "registration_customer_handler" {
-  description = "Nome do handler da função Registration Customer."
+variable "internal_table" {
+  description = "Nome da tabela de usuários internos."
   type        = string
+  default     = "internal_users"
 }
-
-variable "registration_internal_name" {
-  description = "Nome da função Lambda para o registro de usuários internos/admin."
-  type        = string
-}
-
-variable "registration_internal_output_path" {
-  description = "Caminho local para o arquivo .zip de deploy do Registration Internal."
-  type        = string
-}
-
-variable "registration_internal_handler" {
-  description = "Nome do handler da função Registration Internal."
-  type        = string
-}
-
-variable "sync_internal_name" {
-  description = "Nome da função Lambda para o registro de usuários internos/admin."
-  type        = string
-}
-
-variable "sync_internal_output_path" {
-  description = "Caminho local para o arquivo .zip de deploy do Sync Internal."
-  type        = string
-}
-
-variable "sync_internal_handler" {
-  description = "Nome do handler da função Sync Internal."
-  type        = string
-}
-
-variable "sync_customer_name" {
-  description = "Nome da função Lambda para o sync de usuários"
-  type        = string
-}
-
-variable "sync_customer_output_path" {
-  description = "Caminho local para o arquivo .zip de deploy do Sync Internal."
-  type        = string
-}
-
-variable "sync_customer_handler" {
-  description = "Nome do handler da função Sync Internal."
-  type        = string
-}
-

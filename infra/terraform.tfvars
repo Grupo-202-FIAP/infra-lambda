@@ -1,30 +1,23 @@
-project_name = "backend-app"
-lambda_runtime = "python3.9"
-lambda_archive_type = "zip"
+project_name     = "nextime-app"
+aws_region       = "us-east-1"
+account_id       = "056075870573"
+package_type     = "Image"
+memory_size      = "512"
+timeout          = "30"
+lambda_image_tag = "latest"
 
-authorizer_customer_name = "lambda_authorizer_customer"
-authorizer_customer_output_path = "./lambda_authorizer_customer_code.zip"
-authorizer_customer_handler = "lambda_authorizer_customer.handler"
 
-authorizer_internal_name = "lambda_authorizer_internal"
-authorizer_internal_handler = "lambda_authorizer_internal.handler"
-authorizer_internal_output_path = "./lambda_authorizer_internal_code.zip"
+authorizer_name          = "lambda_authorizer"
+lambda_registration_name = "lambda_registration"
 
-registration_customer_name = "lambda_registration_customer"
-registration_customer_handler = "lambda_registration_customer.handler"
-registration_customer_output_path = "./lambda_registration_customer_code.zip"
+# New Lambdas (users)
+lambda_get_user_name     = "lambda_get_user"
+lambda_list_users_name   = "lambda_list_users"
 
-registration_internal_name = "lambda_registration_internal"
-registration_internal_handler = "lambda_registration_internal.handler"
-registration_internal_output_path = "./lambda_registration_internal_code.zip"
-
-sync_internal_name = "lambda_sync_internal"
-sync_internal_handler = "lambda_sync_internal.handler"
-sync_internal_output_path = "./lambda_sync_internal_code.zip"
-
-sync_customer_name = "lambda_sync_customer"
-sync_customer_handler = "lambda_sync_customer.handler"
-sync_customer_output_path = "./lambda_sync_customer_code.zip"
-
-account_id="189094178766"
-
+# Database configuration for user lambdas
+db_host    = "localhost:5432"
+db_user    = "postgres"
+db_password= "postgres"
+db_name    = "pos_db"
+customer_table = "customers"
+internal_table = "internal_users"
